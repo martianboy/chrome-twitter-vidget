@@ -1,31 +1,76 @@
-function load_videos(tweet_id) {
-	return Twitter.getTweet(tweet_id).then(result => {
-		if (result && result.extended_entities) {
-			var videos = result.extended_entities.media
-				.filter(m => m.type === 'video')
-				.map(m => m.video_info.variants
-					.filter(v => v.content_type === 'video/mp4')
+function get_tweet_media(id) {
+	return new Promise((resolve, reject) => {
+		chrome.storage.local.get('cache:' + id, result => {
+			const cached_value = result['cache:' + id];
+
+			if (cached_value && Array.isArray(cached_value))
+				resolve(cached_value);
+			else
+				Twitter.getTweet(id).then(
+					result => {
+						if (result.extended_entities) {
+							const media = result.extended_entities.media;
+							chrome.storage.local.set({['cache:' + id]: media});
+							resolve(media);
+						}
+						else {
+							reject();
+						}
+					},
+					reject
 				);
-
-            console.log(result.extended_entities.media
-				.filter(m => m.type === 'video'));
-
-            $$('#media_variants').innerHTML = '';
-			$$('#media_variants').appendChild(
-                El('ul', videos[0].map(v => El('li',
-                    El('a', {
-                        href: v.url,
-                        target: '_blank'
-                    }, `video/mp4 (bitrate: ${v.bitrate})`) 
-                )))
-            );
-		}
-	}, error => {
-		console.error(error.error);
+		});
 	});
 }
 
-window.onload = function() {
+function load_videos(tweet_id) {
+	return get_tweet_media(tweet_id).then(
+		result => {
+			if (result) {
+				$$('#media_variants').innerHTML = '';
+
+				for (let media of result) {
+					switch(media.type) {
+						case 'animated_gif':
+						case 'video':
+							let videos = media.video_info.variants
+									.filter(v => v.content_type === 'video/mp4');
+							
+							$$('#media_variants').appendChild(
+								El('ul', videos.map(v => El('li',
+									El('a', {
+										href: v.url,
+										target: '_blank'
+									}, `video/mp4 (bitrate: ${v.bitrate})`) 
+								)))
+							);
+							break;
+						case 'photo':
+							$$('#media_variants').appendChild(
+								El('ul',
+									El('li',
+										El('a', {
+											href: media.media_url_https,
+											target: '_blank'
+										}, media.display_url) 
+									)
+								)
+							)
+
+							break;
+						default:
+							break;
+					}
+				}
+			}
+		},
+		error => {
+			console.error(error.error);
+		}
+	);
+}
+
+function onLoad() {
 	chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
 		if (!tabs) {
 			console.warn('Active tabs query returned null!');
@@ -44,7 +89,9 @@ window.onload = function() {
 };
 
 function init() {
-    Settings.init().then(Twitter.init);
+    Settings.init()
+		.then(Twitter.init)
+		.then(onLoad)
 }
 
 init();

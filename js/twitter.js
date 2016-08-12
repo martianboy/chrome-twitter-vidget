@@ -4,9 +4,7 @@ var Twitter = {
 
     init() {
         return new Promise(function(resolve, reject) {
-            if (!Settings.ONLINE) {
-                Twitter.user = {};
-            }
+            Twitter.user = Settings.properties.username;
 
             if (!Twitter.cb) {
                 Twitter.cb = new Codebird();
@@ -15,7 +13,16 @@ var Twitter = {
             }
 
             if (!Twitter.user) {
-                Twitter._verifyCredentials().then(resolve, reject);
+                Twitter._verifyCredentials().then(
+                    result => {
+                        Settings.ONLINE = true;
+                        resolve(result);
+                    },
+                    error => {
+                        Settings.ONLINE = false;
+                        reject(error);
+                    }
+                );
             }
             else {{
                 resolve(Twitter.user);
@@ -31,18 +38,20 @@ var Twitter = {
             if (accessToken && accessTokenSecret) {
                 Twitter.cb.setToken(accessToken, accessTokenSecret);
 
-                Twitter.cb.__call("account_verifyCredentials", {}, result => {
+                Twitter.cb.__call("account_verifyCredentials", {}, (result, rate, error) => {
                     if (result && result.id) {
                         Twitter.user = result;
+                        chrome.storage.sync.set({ username: result.screen_name });
+
                         resolve(result);
                     }
                     else {
-                        reject();
+                        reject(error);
                     }
                 });
             }
             else {
-                reject();
+                reject('accessToken');
             }
         });
     },
@@ -73,8 +82,8 @@ var Twitter = {
                 wrapCallbackError(reply => {
                     Twitter.cb.setToken(reply.oauth_token, reply.oauth_token_secret);
                     resolve({
-                        oauth_token: reply.oauth_token,
-                        oauth_token_secret: reply.oauth_token_secret
+                        accessToken: reply.oauth_token,
+                        accessTokenSecret: reply.oauth_token_secret
                     });
                 }, reject)
             );
@@ -83,7 +92,7 @@ var Twitter = {
 
     call(endpoint, params) {
         return new Promise(function(resolve, reject) {
-            if (Settings.ONLINE) {
+            if (Settings.properties.username) {
                 Twitter.cb.__call(endpoint, params, wrapCallbackError(resolve, reject));
             }
             else {

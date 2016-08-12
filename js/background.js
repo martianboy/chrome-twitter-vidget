@@ -1,8 +1,29 @@
 var manifest = chrome.runtime.getManifest();
 
-if (chrome.runtime.onInstalled) {
-	chrome.runtime.onInstalled.addListener(function() {
-		Settings.save(Settings.DEFAULT);
+function createContextMenuItems() {
+	let auth_menu_item_title;
+	if (Settings.properties.username)
+		auth_menu_item_title = `Logged in as ${Settings.properties.username}`;
+	else
+		auth_menu_item_title = 'Authenticate';
+
+	chrome.contextMenus.create({
+		id: 'twitter_authenticate',
+		title: 'Authenticate',
+		contexts: ["page_action"],
+		onclick() {
+			Twitter.requestToken().then(
+				auth_url => {
+					chrome.tabs.create({
+						"url" : auth_url
+					});
+				},
+				error => {
+
+				}
+			)
+			console.log('authenticate with twitter');
+		}
 	});
 }
 
@@ -19,6 +40,36 @@ chrome.webNavigation.onCompleted.addListener(function(details) {
 		hostEquals: 'twitter.com',
 		pathContains: '/status/'
 	}]
+});
+
+// chrome.webNavigation.onCompleted.addListener(function(details) {
+	
+// }, {
+// 	url: [{
+// 		urlEquals: 'https://api.twitter.com/oauth/authorize',
+// 	}]
+// });
+
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+	var type = request.type;
+
+	if (type === 'getPin:done') {
+		Twitter.accessToken(request.pin).then(
+			result => {
+				if (result)
+					Settings.save(result)
+						.then(
+							() => Twitter.init(),
+							(error) => {
+								console.error(error.error);
+							}
+						)
+						.then(
+							() => console.log('Hurray! Twitter authentication done!')
+						);
+			}
+		)
+	}
 });
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
@@ -44,7 +95,30 @@ chrome.tabs.onActivated.addListener(function(activeInfo) {
 });
 
 function init() {
-	Settings.init().then(Twitter.init);
+	createContextMenuItems();
+
+	Settings.init()
+		.then(Twitter.init)
+		.then(
+			() => console.log("Twitter.init complete"),
+			(error) => {
+				debugger;
+				chrome.contextMenus.update('twitter_authenticate', {
+					title: 'Authenticate'
+				});
+
+				Twitter.requestToken().then(
+					auth_url => {
+						chrome.tabs.create({
+							"url" : auth_url
+						});
+					},
+					error => {
+
+					}
+				);
+			}
+		);
 }
 
 init();
