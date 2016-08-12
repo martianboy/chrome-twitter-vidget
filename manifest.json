@@ -1,0 +1,29 @@
+{
+  "manifest_version": 2,
+  "name": "Twitter VidGet v0.0.1",
+  "description": "Chrome extension to download video entities from a tweet.",
+  "version": "0.0.1",
+
+  "permissions": [
+    "tabs",
+    "webRequest",
+    "webNavigation",
+    "storage",
+    "https://api.twitter.com/*"
+  ],
+
+  "page_action": {
+    "default_icon": "img/logo.png",
+    "default_title": "Twitter VidGet"
+  },
+
+  "background": {
+    "scripts": [
+      "js/settings.js",
+      "lib/codebird.js",
+      "js/twitter.js",
+      "js/background.js"
+    ],
+    "persistent": true
+  }
+}
