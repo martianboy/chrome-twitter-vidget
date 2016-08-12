@@ -6,49 +6,41 @@ if (chrome.runtime.onInstalled) {
 	});
 }
 
-function load_videos(tweet_id) {
-	return Twitter.getTweet(tweet_id).then(result => {
-		if (result && result.extended_entities) {
-			var videos = result.extended_entities.media
-				.filter(m => m.type === 'video')
-				.map(m => m.video_info.variants
-					.filter(v => v.content_type === 'video/mp4')
-				);
+chrome.webNavigation.onCompleted.addListener(function(details) {
+	var matches = details.url.match(/twitter\.com\/[^\/]+\/status\/([0-9]+)/);
 
-			console.log(videos);
-		}
-	}, error => {
-		console.error(error.error);
-	});
-}
-
-chrome.pageAction.onClicked.addListener(function() {
-	chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-		if (!tabs) {
-			console.warn('Active tabs query returned null!');
-			return;
-		}
-
-		var tab_urls = tabs.map(t => t.url.match(/twitter\.com\/[^\/]+\/status\/([0-9]+)/))
-			.filter(m => m && m.length > 1);
-		if (tab_urls.length !== 1) {
-			console.warn('No one tab could be identified!');
-			return;
-		}
-
-		load_videos(tab_urls[0][1]);
-	});
+	console.log('webNavigation.onCompleted:', details.url);
+	if (!matches || matches.length < 2)
+		chrome.pageAction.hide(details.tabId);
+	else
+		chrome.pageAction.show(details.tabId);
+}, {
+	url: [{
+		hostEquals: 'twitter.com',
+		pathContains: '/status/'
+	}]
 });
 
 chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-	if (changeInfo.url) {
-		console.log('Tab url updated!');
+	if (!changeInfo.url) return;
 
-		var matches = changeInfo.url.match(/twitter\.com\/[^\/]+\/status\/([0-9]+)/);
-		if (!matches || matches.length < 2) return;
-
+	console.log('tabs.onUpdated:', changeInfo.url);
+	var matches = changeInfo.url.match(/twitter\.com\/[^\/]+\/status\/([0-9]+)/);
+	if (!matches || matches.length < 2)
+		chrome.pageAction.hide(tabId);
+	else
 		chrome.pageAction.show(tabId);
-	}
+});
+chrome.tabs.onActivated.addListener(function(activeInfo) {
+	chrome.tabs.get(activeInfo.tabId, function(tab) {
+		console.log('tabs.onActivated:', tab.url);
+
+		var matches = tab.url.match(/twitter\.com\/[^\/]+\/status\/([0-9]+)/);
+		if (!matches || matches.length < 2)
+			chrome.pageAction.hide(activeInfo.tabId);
+		else
+			chrome.pageAction.show(activeInfo.tabId);
+	});
 });
 
 function init() {

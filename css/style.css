@@ -1,0 +1,20 @@
+* {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+a {
+    color: #333;
+    text-decoration: none;
+}
+
+#media_variants a {
+    white-space: nowrap;
+
+    display: block;
+    padding: 8px 16px;
+}
+
+#media_variants a:hover {
+    background-color: #e8e8e8;
+}
