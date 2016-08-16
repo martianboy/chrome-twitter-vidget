@@ -2,8 +2,12 @@
   "manifest_version": 2,
   "name": "Twitter VidGet",
   "description": "Chrome extension to download video entities from a tweet.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "homepage_url": "https://github.com/martianboy/chrome-twitter-vidget",
+  "icons": {
+       "128": "img/128.png",
+       "32": "img/32.png"
+  },
 
   "permissions": [
     "tabs",
