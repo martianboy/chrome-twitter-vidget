@@ -104,7 +104,10 @@ var Twitter = {
     },
 
     getTweet(id) {
-        return Twitter.call('statuses_show_ID', { id });
+        return Twitter.call('statuses_show_ID', {
+            id: id,
+            tweet_mode: 'extended'
+        });
     }
 };
 
